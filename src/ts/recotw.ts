@@ -782,6 +782,8 @@ module RecoTwExplorer {
                     twttr.widgets.createTweet(entry.tweet_id, $("#main-area")[0], { lang: "ja" }).then(((widgetID: number, entry: RecoTwEntry, element: Element) => {
                         if (!element) {
                             View.showStatusLoadFailedMessage(widgetID, entry);
+                        } else {
+                            $(element).contents().find(".standalone-tweet").css({ borderRadius: 0 });
                         }
                     }).bind(this, ++View.widgetID, entry));
                 });
