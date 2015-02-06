@@ -103,12 +103,10 @@ module RecoTwExplorer {
         public static INCORRECT_URL_OR_ID = "指定された URL または ID は正しくありません。";
         public static FAILED_TO_GENERATE_STATUS_URL = "ツイートの URL を生成できません。";
         public static FAILED_TO_GENERATE_USER_URL = "ユーザーへの URL を生成できません。";
-        public static FAILED_TO_GENERATE_PROFILE_IMAGE_URL = "プロフィール画像の URL を生成できません。";
         public static FAILED_TO_LOAD_EMBEDDED_TWEET = "Twitter 埋め込みツイートの読み込みに失敗しました。";
         public static SEARCH_HELP_HTML = "<dl><dt>ツイート検索</dt><dd><code>/</code> と <code>/</code> で囲むと正規表現検索</dd><dt>ユーザー名検索</dt><dd><code>from:</code> でユーザーを検索<br>カンマ区切りで複数入力</dd><dt>ID 検索</dt><dd><code>id:</code> で ID 検索</dd></dl>";
         public static STATISTICS_TABLE_HTML = "<span class=\"statistics-table-header\" style=\"border-color: #{0:X6};\"><a href=\"javascript:void(0);\" onclick=\"RecoTwExplorer.Controller.setSearchFilterByUsername('{1}')\">{1}</a> ({2})&nbsp;&nbsp;&ndash;&nbsp;&nbsp;{3:P1}</span><br>";
-        public static TWEET_REMOVED_HTML = "<blockquote>ツイートは削除されたか、または非公開に設定されています。<a href=\"{0}\" target=\"_blank\">表示</a><hr><div><img src=\"{1}\" onerror=\"RecoTwExplorer.Controller.onImageError(this)\"><span><a href=\"{2}\" target=\"_blank\">@{3}</a></span><p>{4}</p></div></blockquote>";
-        public static LINK_TO_URL_HTML = "<a href=\"{0}\" target=\"_blank\">{0}</a>";
+        public static TWEET_REMOVED_HTML = "<blockquote>ツイートは削除されたか、または非公開に設定されています。<a href=\"{0}\" target=\"_blank\">表示</a></blockquote>";
         public static URL_INPUT_AREA = $("#new-record-form .modal-body").html();
         public static USERNAME = "ユーザ名";
         public static TWEETS_COUNT = "ツイート数";
@@ -429,10 +427,8 @@ module RecoTwExplorer {
      * The model.
      */
     class Model {
-        private static ALTERNATIVE_ICON_URL = "./images/none.png";
         private static TWITTER_STATUS_URL = "https://twitter.com/show/status/{0}";
         private static TWITTER_USER_URL = "https://twitter.com/{0}";
-        private static TWITTER_PROFILE_IMAGE_URL = "http://www.paper-glasses.com/api/twipi/{0}/";
         private static RECOTW_GET_ALL_URL = "http://api.recotw.black/1/tweet/get_tweet_all";
         private static RECOTW_POST_URL = "http://api.recotw.black/1/tweet/record_tweet";
         private static RECOTW_COUNT_URL = "http://api.recotw.black/1/tweet/count_tweet";
@@ -611,38 +607,6 @@ module RecoTwExplorer {
                     return String.format(Model.TWITTER_USER_URL, entry.target_sn);
                 } else {
                     throw new Error(Resources.FAILED_TO_GENERATE_USER_URL);
-                }
-            }
-        }
-
-        /**
-         * Creates a profile image URL by the ID.
-         *
-         * @param id The ID of the user.
-         */
-        public static createProfileImageURL(id: string): string;
-        /**
-         * Creates a profile image URL from an entry.
-         *
-         * @param entry An entry from which the URL to be created.
-         */
-        public static createProfileImageURL(entry: RecoTwEntry): string;
-        /**
-         * Creates a profile image URL.
-         *
-         * @param item An object that contains the screen_name of the user or itself.
-         */
-        public static createProfileImageURL(item: any): string {
-            if (item === null) {
-                return Model.ALTERNATIVE_ICON_URL;
-            } else if (typeof item === "string") {
-                return String.format(Model.TWITTER_PROFILE_IMAGE_URL, item);
-            } else {
-                var entry: RecoTwEntry = item;
-                if (entry.target_sn !== void 0) {
-                    return String.format(Model.TWITTER_PROFILE_IMAGE_URL, entry.target_sn);
-                } else {
-                    throw new Error(Resources.FAILED_TO_GENERATE_PROFILE_IMAGE_URL);
                 }
             }
         }
@@ -894,12 +858,8 @@ module RecoTwExplorer {
             $elm.fadeIn();
         }
 
-        private static replaceLinkToURL(target: string) {
-            return target.replace(/[\r\n]/g, "<br>").replace(/https?:\/\/t\.co\/[A-Za-z0-9]+/g, s => String.format(Resources.LINK_TO_URL_HTML, s));
-        }
-
         public static showStatusLoadFailedMessage(widgetID: number, entry: RecoTwEntry): void {
-            $("#twitter-widget-" + widgetID).after(String.format(Resources.TWEET_REMOVED_HTML, Model.createStatusURL(entry), Model.createProfileImageURL(entry), Model.createUserURL(entry), entry.target_sn, View.replaceLinkToURL(entry.content)))
+            $("#twitter-widget-" + widgetID).after(String.format(Resources.TWEET_REMOVED_HTML, Model.createStatusURL(entry)))
                                             .remove();
         }
     }
@@ -1118,10 +1078,6 @@ module RecoTwExplorer {
             }
             Controller.loading = true;
             View.renderHome();
-        }
-
-        public static onImageError(element: HTMLImageElement) {
-            element.src = Model.createProfileImageURL(null);
         }
 
         public static onChartSliceClick(slice: any): void {
