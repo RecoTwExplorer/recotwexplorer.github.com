@@ -457,15 +457,29 @@ module RecoTwExplorer {
          * Initializes the model, starts to download the entries.
          */
         public static init(): void {
+            var item = localStorage.getItem("entries");
+            var sinceID: string = undefined;
+            if (item) {
+                Model.entries = new RecoTwEntryCollection(JSON.parse(item));
+                sinceID = Model.entries.getEnumerable().lastOrDefault().id;
+            } else {
+                Model.entries = new RecoTwEntryCollection([]);
+            }
+
             $.ajax({
                 url: Model.RECOTW_GET_ALL_URL,
-                dataType: "json"
+                dataType: "json",
+                data: { since_id: sinceID }
             }).done((data: RecoTwEntry[], status: string, xhr: JQueryXHR) => {
-                Model.entries = new RecoTwEntryCollection(data);
+                Model.entries.addRange(Enumerable.from(data).skip(1));
                 Controller.onEntriesLoaded();
             }).fail((xhr: JQueryXHR, status: string, e: Error) => {
                 Controller.onEntriesLoadFailed();
             });
+        }
+
+        public static save(): void {
+            localStorage.setItem("entries", JSON.stringify(Model.entries.reset().getEnumerable().toArray()));
         }
 
         /**
@@ -982,7 +996,8 @@ module RecoTwExplorer {
             Controller.setOptions(Options.fromQueryString(location.search, Order.Descending, OrderBy.RecordedDate), false, false, true);
 
             $(window).bottom({ proximity: 0.05 });
-            $(window).on("bottom",() => {
+            $(window).unload(Model.save);
+            $(window).on("bottom", () => {
                 if (View.getCurrentTab() === Tab.Home) {
                     Controller.onPageBottom();
                 }
@@ -1018,7 +1033,7 @@ module RecoTwExplorer {
                     $elm.css({ cssText: "display: block !important" });
                 }
             });
-            $(window).on("popstate",() => {
+            $(window).on("popstate", () => {
                 Controller.setOptions(Options.fromQueryString(location.search, Controller.getOrder(), Controller.getOrderBy()), false, false, true);
             });
             $("#reload-entries-link").click(() => {
