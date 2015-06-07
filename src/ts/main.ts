@@ -461,9 +461,20 @@ module RecoTwExplorer {
     class NotificationManager {
         private _length = 0;
         private _favico: Favico = null;
+        private _$wrapper = $({});
 
+        /*
+         * Initializes a new instance of NotificationManager class.
+         */
         public constructor() {
             this._favico = new Favico({ animation: "slide" });
+            this.on("change", (eventObject, length) => {
+                try {
+                    this._favico.badge(length);
+                } catch (e) {
+                    console.log(e.message);
+                }
+            });
         }
 
         /**
@@ -474,28 +485,49 @@ module RecoTwExplorer {
         }
 
         /**
+         * Attaches an event handler function for one or more events.
+         * @param events One or more space-separated event types.
+         * @param handler A function to execute when the event is triggered.
+         */
+        public on(events: string, handler: (eventObject: JQueryEventObject, length?: number) => any): JQuery {
+            return this._$wrapper.on.apply(this._$wrapper, arguments);
+        }
+
+        /**
+         * Removes an event handler.
+         * @param events One or more space-separated event types.
+         * @param selector A selector which should match the one originally passed to .on() when attaching event handlers.
+         * @param handler A handler function previously attached for the event(s).
+         */
+        public off(events?: string, selector?: string, handler?: (eventObject: JQueryEventObject) => any): JQuery {
+            return this._$wrapper.off.apply(this._$wrapper, arguments);
+        }
+
+        /**
+         * Executes all handlers attached for an event.
+         * @param eventType A string containing a JavaScript event type, such as click or submit.
+         * @param extraParameters An array of additional parameters to pass along to the event handler.
+         */
+        protected triggerHandler(eventType: string, extraParameters: any[]): Object {
+            return this._$wrapper.triggerHandler.apply(this._$wrapper, arguments);
+        }
+
+        /**
          * Creates a notification.
          * @param A number of notifications to create.
          */
         public create(count: number): void {
-            this._length += count;
-            try {
-                this._favico.badge(this._length);
-            } catch (e) {
-                console.log(e.message);
+            if (count <= 0) {
+                return;
             }
+            this.triggerHandler("change", [ this._length = this.length + count ]);
         }
 
         /**
          * Clears all of the notifications.
          */
         public clear(): void {
-            this._length = 0;
-            try {
-                this._favico.reset();
-            } catch (e) {
-                console.log(e.message);
-            }
+            this.triggerHandler("change", [ this._length = 0 ]);
         }
     }
 
@@ -689,7 +721,7 @@ module RecoTwExplorer {
                 if (+data.id === +Model.latestEntry.id + 1) {
                     delete data.result;
                     Model.entries.add(data);
-                    Controller.onNewEntries(1);
+                    Model.notification.create(1);
                 }
                 deferred.resolve(data);
             }).fail((xhr: JQueryXHR, status: string, e: Error) => {
@@ -833,9 +865,7 @@ module RecoTwExplorer {
             }
             Model._pollingID = window.setInterval(() => {
                 Model.fetchLatestEntries().done(data => {
-                    if (data.length > 0) {
-                        Controller.onNewEntries(data.length);
-                    }
+                    Model.notification.create(data.length);
                 }).fail((xhr: JQueryXHR) => {
                     console.log(xhr);
                 });
@@ -1194,10 +1224,19 @@ module RecoTwExplorer {
                 Controller.setOptions(Options.fromQueryString(location.search, Controller.order, Controller.orderBy), false, false, true);
             });
             Tab.home.element.click(() => {
-                if (Tab.home.active && Model.notification.length > 0) {
+                var length = Model.notification.length;
+                if (Tab.home.active && length > 0) {
                     Model.notification.clear();
-                    Controller.onNotificationStatusChanged();
-                    Controller.showNewStatuses(Model.notification.length);
+                    Controller.showNewStatuses(length);
+                }
+            });
+            Model.notification.on("change", (eventObject, length) => {
+                View.title = null;
+                if (length === 0) {
+                    $("#unread-tweets").fadeOut();
+                } else {
+                    var badge = length < 100 ? length : "99+";
+                    $("#unread-tweets").text(badge).css({ display: "inline-block" });
                 }
             });
             $(".navbar-brand, #clear-search-filter").click(() => {
@@ -1299,6 +1338,7 @@ module RecoTwExplorer {
             }
             Tab.home.clear();
             Tab.statistics.clear();
+            Model.notification.clear();
 
             if (Tab.home.active) {
                 Tab.home.render();
@@ -1328,22 +1368,6 @@ module RecoTwExplorer {
 
         public static onRegistrationFailed(error: string): void {
             $("#new-record-toggle-button").attr("data-content", String.format(Resources.REGISTRATION_FAILED_HTML, error)).popover("show");
-        }
-
-        public static onNewEntries(count: number): void {
-            Model.notification.create(count);
-            Controller.onNotificationStatusChanged();
-        }
-
-        public static onNotificationStatusChanged(): void {
-            View.title = null;
-            var count = Model.notification.length;
-            if (count === 0) {
-                $("#unread-tweets").fadeOut();
-            } else {
-                var badge = count < 100 ? count : "99+";
-                $("#unread-tweets").text(badge).css({ display: "inline-block" });
-            }
         }
 
         public static onPageBottom(): void {
