@@ -461,14 +461,14 @@ module RecoTwExplorer {
     class NotificationManager {
         private _length = 0;
         private _favico: Favico = null;
-        private _$wrapper = $({});
+        private _$wrapper = $("#unread-tweets");
 
         /*
          * Initializes a new instance of NotificationManager class.
          */
         public constructor() {
             this._favico = new Favico({ animation: "slide" });
-            this.on("change", (eventObject, length) => {
+            this.on("update", (eventObject, length) => {
                 try {
                     this._favico.badge(length);
                 } catch (e) {
@@ -520,14 +520,14 @@ module RecoTwExplorer {
             if (count <= 0) {
                 return;
             }
-            this.triggerHandler("change", [ this._length = this.length + count ]);
+            this.triggerHandler("update", [ this._length = this.length + count ]);
         }
 
         /**
          * Clears all of the notifications.
          */
         public clear(): void {
-            this.triggerHandler("change", [ this._length = 0 ]);
+            this.triggerHandler("update", [ this._length = 0 ]);
         }
     }
 
@@ -1230,7 +1230,7 @@ module RecoTwExplorer {
                     Controller.showNewStatuses(length);
                 }
             });
-            Model.notification.on("change", (eventObject, length) => {
+            Model.notification.on("update", (eventObject, length) => {
                 View.title = null;
                 if (length === 0) {
                     $("#unread-tweets").fadeOut();
