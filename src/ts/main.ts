@@ -333,7 +333,8 @@ module RecoTwExplorer {
 
             if (userIDs === null) {
                 this._userIDs = this.enumerable.toDictionary(x => x.target_id, x => x.target_sn);
-                this.enumerable.forEach(x => x.target_sn = this._userIDs.get(x.target_id));
+                // Override all "target_sn"s with the latest ones, ordering by descending.
+                this.enumerable.orderByDescending(x => x.tweet_id).forEach(x => x.target_sn = this._userIDs.get(x.target_id));
             }
         }
 
