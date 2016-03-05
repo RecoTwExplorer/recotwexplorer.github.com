@@ -88,13 +88,16 @@ module RecoTwExplorer {
      * The resources for UI.
      */
     class Resources {
-        public static INCORRECT_REGEX = "指定された正規表現は正しくありません。";
-        public static INCORRECT_URL_OR_ID = "指定された URL または ID は正しくありません。";
-        public static BADGE_NOT_SUPPORTED = "通知バッジがサポートされていません。";
-        public static FAILED_TO_GENERATE_STATUS_URL = "ツイートの URL を生成できません。";
-        public static FAILED_TO_GENERATE_USER_URL = "ユーザーへの URL を生成できません。";
-        public static FAILED_TO_GENERATE_PROFILE_IMAGE_URL = "プロフィール画像の URL を生成できません。";
-        public static FAILED_TO_LOAD_EMBEDDED_TWEET = "Twitter 埋め込みツイートの読み込みに失敗しました。";
+        public static INCORRECT_REGEX = "指定された正規表現は正しくありません";
+        public static INCORRECT_URL_OR_ID = "指定された URL または ID は正しくありません";
+        public static ALREADY_REGISTERED = "すでに登録されているツイートです";
+        public static REGISTRATION_AVAILABLE = "このツイートは登録可能です";
+        public static REGISTRATION_DEFAULT = "ツイートの ID または URL を指定します";
+        public static BADGE_NOT_SUPPORTED = "通知バッジがサポートされていません";
+        public static FAILED_TO_GENERATE_STATUS_URL = "ツイートの URL を生成できません";
+        public static FAILED_TO_GENERATE_USER_URL = "ユーザーへの URL を生成できません";
+        public static FAILED_TO_GENERATE_PROFILE_IMAGE_URL = "プロフィール画像の URL を生成できません";
+        public static FAILED_TO_LOAD_EMBEDDED_TWEET = "Twitter 埋め込みツイートの読み込みに失敗しました";
         public static REGISTER_NEW_TWEET = "ツイートの ID または URL:";
         public static REGISTRATION_FAILED_HTML = "<strong>登録失敗</strong><br>{0}";
         public static SEARCH_HELP_HTML = "<dl><dt>ツイート検索</dt><dd><code>/</code> と <code>/</code> で囲むと正規表現検索</dd><dt>ユーザー名検索</dt><dd><code>from:</code> でユーザーを検索<br>カンマ区切りで複数入力</dd><dt>ID 検索</dt><dd><code>id:</code> で ID 検索</dd></dl>";
@@ -116,12 +119,12 @@ module RecoTwExplorer {
             [code: string]: string;
             UNKNOWN_ERROR: string;
         } = {
-            "400": "パラメーターが正しくありません。",
-            "403": "ツイートの取得に失敗しました。",
-            "404": "指定されたツイートは存在しません。",
-            "500": "すでに登録されているツイートです。",
-            "503": "サーバーで問題が発生しています。",
-            UNKNOWN_ERROR: "原因不明のエラーです。"
+            "400": "パラメーターが正しくありません",
+            "403": "ツイートの取得に失敗しました",
+            "404": "指定されたツイートは存在しません",
+            "500": Resources.ALREADY_REGISTERED,
+            "503": "サーバーで問題が発生しています",
+            UNKNOWN_ERROR: "原因不明のエラーです"
         };
     }
 
@@ -864,8 +867,10 @@ module RecoTwExplorer {
                 return;
             }
             Model._pollingID = window.setInterval(() => {
-                Model.fetchLatestEntries().done(data => {
-                    Model.notification.create(data.length);
+                Model.fetchLatestEntries().done((data: RecoTwEntry[]) => {
+                    if (data.length > 0) {
+                        Controller.onNewEntries(data.length);
+                    }
                 }).fail((xhr: JQueryXHR) => {
                     console.log(xhr);
                 });
@@ -930,13 +935,8 @@ module RecoTwExplorer {
      */
     class HomeTab extends Tab {
         private static TWEETS_COUNT = 25;
-        private static WIDGET_OPTIONS: TwitterTweetWidgetOptions = {
-            lang: "ja",
-            linkColor: "#774c80"
-        };
 
         private _current = 0;
-        private _widgetID = -1;
 
         public constructor() {
             super("home-tab");
@@ -951,7 +951,7 @@ module RecoTwExplorer {
             Controller.loading = false;
 
             var $main = $("#main-area");
-            var element: HTMLElement;
+            var $container: JQuery;
             var entries = Model.entries.enumerable;
             if (entries.isEmpty()) {
                 $("#no-result-container").fadeIn();
@@ -960,27 +960,31 @@ module RecoTwExplorer {
 
             if (count) {
                 entries = entries.take(count);
-                element = $("<div></div>").prependTo($main)[0];
+                $container = $("<div></div>").prependTo($main);
             } else {
                 entries = entries.skip(this._current).take(HomeTab.TWEETS_COUNT);
-                element = $main[0];
+                $container = $main;
             }
 
-            twttr.ready(() => entries.forEach(x => this.renderTweet(x, element)));
+            twttr.ready(() => entries.forEach(x => this.renderTweet(x, $container)));
             this._current += count || HomeTab.TWEETS_COUNT;
             super.render();
         }
 
-        private renderTweet(entry: RecoTwEntry, element: HTMLElement): void {
-            var widgetID = ++this._widgetID;
-            twttr.widgets.createTweet(entry.tweet_id, element, HomeTab.WIDGET_OPTIONS).then((widget: HTMLIFrameElement) => {
+        private renderTweet(entry: RecoTwEntry, $container: JQuery): void {
+            var $element = $("<div></div>", { id: "recotw-tweet-" + entry.tweet_id }).appendTo($container);
+            twttr.widgets.createTweet(entry.tweet_id, $element[0], {
+                lang: "ja",
+                linkColor: "#774c80"
+            }).then((widget: HTMLIFrameElement) => {
                 if (!widget) {
-                    this.showStatusLoadFailedMessage(widgetID, entry);
+                    this.showStatusLoadFailedMessage(entry, $element);
                 } else {
-                    var $contents = $(widget).contents();
+                    var $contents = $(widget).css("height", "auto").contents();
                     $contents.find(".Tweet-brand .u-hiddenInNarrowEnv").hide();
                     $contents.find(".Tweet-brand .u-hiddenInWideEnv").css("display", "inline-block");
                     $contents.find(".Tweet-author").css("max-width", "none");
+                    $contents.find(".EmbeddedTweet").css("max-width", "100%");
                 }
             });
         }
@@ -989,12 +993,12 @@ module RecoTwExplorer {
             return target.replace(/[\r\n]/g, "<br>").replace(/https?:\/\/t\.co\/[A-Za-z0-9]+/g, s => String.format(Resources.LINK_TO_URL_HTML, s));
         }
 
-        private showStatusLoadFailedMessage(widgetID: number, entry: RecoTwEntry): void {
+        private showStatusLoadFailedMessage(entry: RecoTwEntry, $target: JQuery): void {
             var tweetDate = Model.createDateByTweetID(entry);
             var time = String.format(Resources.TWEET_TIME_HTML, Model.createStatusURL(entry), tweetDate, tweetDate.toISOString());
             var $elm = $(String.format(Resources.TWEET_REMOVED_HTML, Model.createProfileImageURL(entry), Model.createUserURL(entry), entry.target_sn, this.replaceLinkToURL(entry.content), time));
 
-            $("#twitter-widget-" + widgetID).after($elm).remove();
+            $target.append($elm);
             $elm.find("img").on("error", ($event: JQueryEventObject) => (<HTMLImageElement>$event.target).src = Model.createProfileImageURL(null));
         }
 
@@ -1289,9 +1293,7 @@ module RecoTwExplorer {
             $("#new-record-modal").on("hidden.bs.modal", () => {
                 $("#new-record-form .modal-body").empty().html(Resources.URL_INPUT_AREA);
             });
-            $("#new-record-modal").on("keyup change input", ".url-box", () => {
-                Controller.onNewRecordFormTextBoxValueChanged();
-            });
+            $("#new-record-modal").on("keyup change input", ".url-box", Controller.onNewRecordFormTextBoxValueChanged);
             $("#statistics-filter-textbox").on("keyup change input", ($event: JQueryEventObject) => {
                 Tab.statistics.applyChartFilter((<HTMLInputElement>$event.target).value);
             });
@@ -1380,34 +1382,37 @@ module RecoTwExplorer {
 
         public static onChartSliceClick(slice: any): void {
             var target = <string>slice.targetID;
-            if (!target.contains("#")) {
+            var index = target.indexOf("#");
+            if (index < 0) {
                 return;
             }
-            var id = +target.substring(target.indexOf("#") + 1);
+            var id = +target.substring(index + 1);
             if (id < 0) {
                 return;
             }
             Tab.statistics.applySearchFilter(Model.statistics.users[id].target_sn);
         }
 
-        private static onNewRecordFormTextBoxValueChanged(): void {
-            var $elements = $(".url-input-area");
-            var inputs: string[] = $(".url-box").map((index: number, element: HTMLInputElement) => element.value).get();
-
-            $elements.each(function (index) {
-                $(this).removeClass("has-success has-error");
-                try {
-                    if (Model.createIDfromURL(inputs[index]) !== null) {
-                        $(this).addClass("has-success");
-                    }
-                } catch (e) {
-                    $(this).addClass("has-error");
+        private static onNewRecordFormTextBoxValueChanged($event: JQueryEventObject): void {
+            var $this = $(this).parents(".url-input-area").removeClass("has-success has-warning has-error");
+            var elm = <HTMLInputElement>$event.target;
+            try {
+                var id = Model.createIDfromURL(elm.value);
+                if (Model.entries.reset().enumerable.any(x => x.tweet_id === id)) {
+                    $this.addClass("has-warning").find(".help-block").text(Resources.ALREADY_REGISTERED);
+                } else if (id !== null) {
+                    $this.addClass("has-success").find(".help-block").text(Resources.REGISTRATION_AVAILABLE);
+                } else {
+                    $this.find(".help-block").text(Resources.REGISTRATION_DEFAULT);
                 }
-            });
+            } catch (e) {
+                $this.addClass("has-error").find(".help-block").text(Resources.INCORRECT_URL_OR_ID);
+            }
 
             /**
              * [FUTURE] The following code is to increase text boxes for multiple entries registration.
              */
+            // var inputs: string[] = $(".url-box").map((index: number, element: HTMLInputElement) => element.value).get();
             // if (inputs[inputs.length - 1] !== "") {
             //     $("#new-record-form .modal-body").append(Resources.URL_INPUT_AREA);
             // } else if (inputs.length >= 2 && inputs[inputs.length - 2] === "") {
