@@ -869,7 +869,7 @@ module RecoTwExplorer {
             Model._pollingID = window.setInterval(() => {
                 Model.fetchLatestEntries().done((data: RecoTwEntry[]) => {
                     if (data.length > 0) {
-                        Controller.onNewEntries(data.length);
+                        Model.notification.create(data.length);
                     }
                 }).fail((xhr: JQueryXHR) => {
                     console.log(xhr);
