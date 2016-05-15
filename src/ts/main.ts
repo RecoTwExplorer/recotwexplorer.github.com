@@ -443,8 +443,11 @@ module RecoTwExplorer {
                         throw new Error(Resources.INCORRECT_REGEX);
                     }
                 } else {
-                    options.body = options.body.toLowerCase();
-                    result._enumerable = result.enumerable.where(x => x.content.toLowerCase().contains(options.body));
+                    var body = options.body.replace(/&/g, "&amp;")
+                                           .replace(/</g, "&lt;")
+                                           .replace(/>/g, "&gt;")
+                                           .toLowerCase();
+                    result._enumerable = result.enumerable.where(x => x.content.toLowerCase().contains(body));
                 }
             }
             if (options.usernames !== void 0 && options.usernames.length > 0) {
