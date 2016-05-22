@@ -1,5 +1,6 @@
 /// <reference path="./main.d.ts"/>
 /// <reference path="./recotw.d.ts"/>
+/// <reference path="./dom.d.ts"/>
 /// <reference path="../../lib/js/typings/bootstrap/bootstrap.d.ts"/>
 /// <reference path="../../lib/js/typings/google.visualization/google.visualization.d.ts"/>
 /// <reference path="../../lib/js/typings/jquery/jquery.d.ts"/>
@@ -25,9 +26,9 @@
 
 module RecoTwExplorer {
     "use strict";
-    var APP_NAME = "RecoTw Explorer";
-    var APP_VERSION = "2.40";
-    var APP_URL = location.protocol + "//" + location.host + location.pathname;
+    const APP_NAME = "RecoTw Explorer";
+    const APP_VERSION = "2.50";
+    const APP_URL = location.protocol + "//" + location.host + location.pathname;
 
     /*
      * Bootstrap jQuery Shake Effect snippet - pAMmDzOfnL
@@ -35,8 +36,8 @@ module RecoTwExplorer {
      */
     $.fn.shake = function (shakes: number, distance: number, duration: number): JQuery {
         return (<JQuery>this).each(function () {
-            var $this = $(this);
-            for (var i = 0; i < shakes; i++) {
+            const $this = $(this);
+            for (let i = 0; i < shakes; i++) {
                 $this.animate({ left: -distance }, duration / shakes / 4)
                      .animate({ left: distance }, duration / shakes / 2)
                      .animate({ left: 0 }, duration / shakes / 4);
@@ -167,7 +168,7 @@ module RecoTwExplorer {
          * Converts the options to a search query string, which is used for location.search.
          */
         public toQueryString(): string {
-            var queries: string[] = [];
+            const queries: string[] = [];
             if (this.isFilteredByUsernames()) {
                 queries[queries.length] = "username=" + encodeURIComponent(this.usernames.join(","));
             }
@@ -192,7 +193,7 @@ module RecoTwExplorer {
          * Converts the options to a keywords string.
          */
         public toKeywords(): string {
-            var keywords: string[] = [];
+            const keywords: string[] = [];
             if (this.isFilteredByUsernames()) {
                 keywords[keywords.length] = "from:" + this.usernames.join(",");
             }
@@ -216,16 +217,16 @@ module RecoTwExplorer {
          * @param orderBy A key value by which to sort entries.
          */
         public static fromQueryString(queryString: string, order: Order, orderBy: OrderBy): Options {
-            var options = new Options([], "", null, false, order, orderBy);
+            const options = new Options([], "", null, false, order, orderBy);
             if (queryString.length === 0 || queryString === "?") {
                 return options;
             }
-            var queries = queryString.substring(1).split("&").map(x => x.split("="))
-                                                             .filter(x => x.length === 2)
-                                                             .map(x => ({ property: x[0], value: decodeURIComponent(x[1]) }));
+            const queries = queryString.substring(1).split("&").map(x => x.split("="))
+                                                               .filter(x => x.length === 2)
+                                                               .map(x => ({ property: x[0], value: decodeURIComponent(x[1]) }));
 
             queries.filter(x => x.property === "body").forEach(x => {
-                var match: RegExpMatchArray;
+                let match: RegExpMatchArray;
                 if ((match = x.value.match(/^\/(.*)\/$/)) !== null) {
                     options.body = match[1];
                     options.regex = true;
@@ -246,11 +247,11 @@ module RecoTwExplorer {
          * @param orderBy A key value by which to sort entries.
          */
         public static fromKeywords(keywords: string, order: Order, orderBy: OrderBy): Options {
-            var options = new Options([], "", null, false, order, orderBy);
-            var value = keywords.split(" ");
-            var match: RegExpMatchArray;
+            const options = new Options([], "", null, false, order, orderBy);
+            const value = keywords.split(" ");
+            let match: RegExpMatchArray;
 
-            for (var i = 0; i < value.length; i++) {
+            for (let i = 0; i < value.length; i++) {
                 if ((match = value[i].match(/^from:([a-zA-Z0-9_]+(?:,[a-zA-Z0-9_]+)*)$/)) !== null) {
                     options.usernames = match[1].split(",");
                     continue;
@@ -332,7 +333,8 @@ module RecoTwExplorer {
             this._enumerable = enumerable || Enumerable.from(elements);
 
             if (userIDs === null) {
-                this._userIDs = this.enumerable.toDictionary(x => x.target_id, x => x.target_sn);
+                // Override all of target_sn values with the latest ones.
+                this._userIDs = this.enumerable.orderByDescending(x => x.tweet_id, (x: any, y: any) => x - y).toDictionary(x => x.target_id, x => x.target_sn);
                 this.enumerable.forEach(x => x.target_sn = this._userIDs.get(x.target_id));
             }
         }
@@ -398,13 +400,13 @@ module RecoTwExplorer {
          * @param options Configurations to sort entries.
          */
         public sort(options: Options): RecoTwEntryCollection {
-            var result = this.clone();
+            const result = this.clone();
             if (!options) {
                 return result;
             }
-            var order = options.order || Order.Descending;
-            var orderBy = options.orderBy || OrderBy.RecordedDate;
-            var sortCallback = (x: any, y: any) => x - y;
+            const order = options.order || Order.Descending;
+            const orderBy = options.orderBy || OrderBy.RecordedDate;
+            const sortCallback = (x: any, y: any) => x - y;
             switch (true) {
                 case order === Order.Ascending && orderBy === OrderBy.RecordedDate:
                     result._enumerable = result.enumerable.orderBy(x => x.record_date);
@@ -430,22 +432,20 @@ module RecoTwExplorer {
          * @param options Configurations to filter entries.
          */
         public filter(options: Options): RecoTwEntryCollection {
-            var result = this.clone();
+            const result = this.clone();
             if (options === void 0 || options === null) {
                 return result;
             }
-            var re: RegExp;
             if (options.body !== void 0 && options.body.length > 0) {
                 if (options.regex) {
                     try {
-                        re = new RegExp(options.body, "i");
+                        const re = new RegExp(options.body, "i");
+                        result._enumerable = result.enumerable.where(x => re.test(x.content));
                     } catch (e) {
                         throw new Error(Resources.INCORRECT_REGEX);
                     }
-                    result._enumerable = result.enumerable.where(x => re.test(x.content));
                 } else {
-                    options.body = options.body.toLowerCase();
-                    result._enumerable = result.enumerable.where(x => x.content.toLowerCase().contains(options.body));
+                    result._enumerable = result.enumerable.where(x => x.content.toLowerCase().contains(options.body.toLowerCase()));
                 }
             }
             if (options.usernames !== void 0 && options.usernames.length > 0) {
@@ -454,6 +454,15 @@ module RecoTwExplorer {
             if (options.id !== null) {
                 result._enumerable = result.enumerable.where(x => x.tweet_id === options.id);
             }
+            return result;
+        }
+
+        /**
+         * Returns a new instance which memorizes the enumerator.
+         */
+        public memoize(): RecoTwEntryCollection {
+            const result = this.clone();
+            result._enumerable = result.enumerable.memoize();
             return result;
         }
     }
@@ -541,10 +550,10 @@ module RecoTwExplorer {
         private static ALTERNATIVE_ICON_URL = "./images/none.png";
         private static TWITTER_STATUS_URL = "https://twitter.com/show/status/{0}";
         private static TWITTER_USER_URL = "https://twitter.com/{0}";
-        private static TWITTER_PROFILE_IMAGE_URL = "http://www.paper-glasses.com/api/twipi/{0}/";
-        private static RECOTW_GET_ALL_URL = "http://api.recotw.black/1/tweet/get_tweet_all";
-        private static RECOTW_POST_URL = "http://api.recotw.black/1/tweet/record_tweet";
-        private static RECOTW_COUNT_URL = "http://api.recotw.black/1/tweet/count_tweet";
+        private static TWITTER_PROFILE_IMAGE_URL = "/api/icon/{0}/";
+        private static RECOTW_GET_ALL_URL = "/api/recotw/1/tweet/get_tweet_all";
+        private static RECOTW_POST_URL = "/api/recotw/1/tweet/record_tweet";
+        private static RECOTW_COUNT_URL = "/api/recotw/1/tweet/count_tweet";
         private static POLLING_INTERVAL = 20000;
         private static TWITTER_SNOWFLAKE_EPOCH = 1288834974657;
 
@@ -564,9 +573,10 @@ module RecoTwExplorer {
          * Loads entries from localStorage and fetch new ones.
          */
         private static load(): void {
-            var entries: RecoTwEntry[] = [];
-            var item = localStorage ? localStorage.getItem("entries") : null;
-            if (item) {
+            let entries: RecoTwEntry[] = [];
+            const item = localStorage ? localStorage.getItem("entries") : null;
+            const raw = localStorage ? localStorage.getItem("raw") : false;
+            if (item && raw) {
                 entries = JSON.parse(item);
             }
             Model.fetchLatestEntries(entries).then(Controller.onEntriesLoaded, Controller.onEntriesLoadFailed);
@@ -577,6 +587,7 @@ module RecoTwExplorer {
          */
         public static save(): void {
             if (localStorage && Model.entries) {
+                localStorage.setItem("raw", JSON.stringify(true));
                 localStorage.setItem("entries", JSON.stringify(Model.entries.reset().enumerable.toArray()));
             }
         }
@@ -629,7 +640,7 @@ module RecoTwExplorer {
             if (Model.entries === null) {
                 return;
             }
-            Model._entries = Model.entries.reset().sort(options).filter(options);
+            Model._entries = Model.entries.reset().sort(options).filter(options).memoize();
             Model._statistics = null;
         }
 
@@ -655,7 +666,7 @@ module RecoTwExplorer {
          * @param input A string or array to input.
          */
         public static createIDfromURL(input: string | string[]): any {
-            var match: RegExpMatchArray;
+            let match: RegExpMatchArray;
             if (input === void 0 || input === null || input.length === 0) {
                 return null;
             } else if (typeof input === "string") {
@@ -663,7 +674,7 @@ module RecoTwExplorer {
                     return match[1] || match[2];
                 }
             } else if (Array.isArray(input)) {
-                var ids = input.map(Model.createIDfromURL);
+                const ids = input.map(Model.createIDfromURL);
                 if (!ids.every(x => x === null)) {
                     return ids;
                 }
@@ -671,19 +682,39 @@ module RecoTwExplorer {
             throw new Error(Resources.INCORRECT_URL_OR_ID);
         }
 
+        /*
+         * Escapes a string as HTML.
+         * @param str The string to escape.
+         */
+        public static escapeHtml(str: string): string {
+            return str.replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;");
+        }
+
+        /*
+         * Unescapes an HTML string.
+         * @param str The string to unescape.
+         */
+        public static unescapeHtml(str: string): string {
+            return str.replace(/&lt;/g, "<")
+                      .replace(/&gt;/g, ">")
+                      .replace(/&amp;/g, "&");
+        }
+
         /**
          * Retrieves new entries from the remote.
          * @param entries The entries to initialize with.
          */
         public static fetchLatestEntries(entries?: RecoTwEntry[]): JQueryPromise<RecoTwEntry[]> {
-            var sinceID: number;
+            let sinceID: number;
             if (Model.entries !== null) {
                 sinceID = +Model.latestEntry.id + 1;
             } else if (entries && entries.length > 0) {
                 sinceID = +entries[entries.length - 1].id + 1;
             }
 
-            var deferred = $.Deferred<RecoTwEntry[]>();
+            const deferred = $.Deferred<RecoTwEntry[]>();
             $.ajax({
                 url: Model.RECOTW_GET_ALL_URL,
                 dataType: "json",
@@ -692,6 +723,7 @@ module RecoTwExplorer {
                 if (Model.entries === null) {
                     Model._entries = new RecoTwEntryCollection(entries);
                 }
+                data.forEach(x => x.content = Model.unescapeHtml(x.content));
                 if (data.length > 0) {
                     Model.entries.addRange(data);
                 }
@@ -707,8 +739,8 @@ module RecoTwExplorer {
          * @param input A URL or ID of a Tweet to register.
          */
         public static registerEntries(inputs: string[]): JQueryPromise<RecoTwRecordResponse> {
-            var deferred = $.Deferred<RecoTwRecordResponse>();
-            var ids = Model.createIDfromURL(inputs);
+            const deferred = $.Deferred<RecoTwRecordResponse>();
+            const ids = Model.createIDfromURL(inputs);
             $.ajax({
                 url: this.RECOTW_POST_URL,
                 type: "POST",
@@ -728,7 +760,7 @@ module RecoTwExplorer {
                 }
                 deferred.resolve(data);
             }).fail((xhr: JQueryXHR, status: string, e: Error) => {
-                var response = <RecoTwErrorResponse>xhr.responseJSON;
+                const response = <RecoTwErrorResponse>xhr.responseJSON;
                 if (!response || !response.errors) {
                     deferred.reject(Resources.POST_ERRORS.UNKNOWN_ERROR);
                 } else {
@@ -836,7 +868,7 @@ module RecoTwExplorer {
             if (typeof item === "string") {
                 // Using String conversion because JavaScript converts a Number to a 32-bit integer to perform shift operation; this is mostly same as following code:
                 // new Date(((+item) >> 22) + Model.TWITTER_SNOWFLAKE_EPOCH);
-                var binary = (+item).toString(2);
+                const binary = (+item).toString(2);
                 return new Date(parseInt(binary.substr(0, binary.length - 22), 2) + Model.TWITTER_SNOWFLAKE_EPOCH);
             } else {
                 if (item.tweet_id !== void 0) {
@@ -950,9 +982,9 @@ module RecoTwExplorer {
             $("#no-result-container").hide();
             Controller.loading = false;
 
-            var $main = $("#main-area");
-            var $container: JQuery;
-            var entries = Model.entries.enumerable;
+            const $main = $("#main-area");
+            let $container: JQuery;
+            let entries = Model.entries.enumerable;
             if (entries.isEmpty()) {
                 $("#no-result-container").fadeIn();
                 return;
@@ -972,7 +1004,7 @@ module RecoTwExplorer {
         }
 
         private renderTweet(entry: RecoTwEntry, $container: JQuery): void {
-            var $element = $("<div></div>", { id: "recotw-tweet-" + entry.tweet_id }).appendTo($container);
+            const $element = $("<div></div>", { id: "recotw-tweet-" + entry.tweet_id }).appendTo($container);
             twttr.widgets.createTweet(entry.tweet_id, $element[0], {
                 lang: "ja",
                 linkColor: "#774c80"
@@ -980,7 +1012,7 @@ module RecoTwExplorer {
                 if (!widget) {
                     this.showStatusLoadFailedMessage(entry, $element);
                 } else {
-                    var $contents = $(widget).css("height", "auto").contents();
+                    const $contents = $(widget.shadowRoot || widget).css("height", "auto").contents();
                     $contents.find(".Tweet-brand .u-hiddenInNarrowEnv").hide();
                     $contents.find(".Tweet-brand .u-hiddenInWideEnv").css("display", "inline-block");
                     $contents.find(".Tweet-author").css("max-width", "none");
@@ -994,11 +1026,11 @@ module RecoTwExplorer {
         }
 
         private showStatusLoadFailedMessage(entry: RecoTwEntry, $target: JQuery): void {
-            var tweetDate = Model.createDateByTweetID(entry);
-            var time = String.format(Resources.TWEET_TIME_HTML, Model.createStatusURL(entry), tweetDate, tweetDate.toISOString());
-            var $elm = $(String.format(Resources.TWEET_REMOVED_HTML, Model.createProfileImageURL(entry), Model.createUserURL(entry), entry.target_sn, this.replaceLinkToURL(entry.content), time));
+            const tweetDate = Model.createDateByTweetID(entry);
+            const time = String.format(Resources.TWEET_TIME_HTML, Model.createStatusURL(entry), tweetDate, tweetDate.toISOString());
+            const $elm = $(String.format(Resources.TWEET_REMOVED_HTML, Model.createProfileImageURL(entry), Model.createUserURL(entry), entry.target_sn, this.replaceLinkToURL(Model.escapeHtml(entry.content)), time));
 
-            $target.append($elm);
+            $target.empty().append($elm);
             $elm.find("img").on("error", ($event: JQueryEventObject) => (<HTMLImageElement>$event.target).src = Model.createProfileImageURL(null));
         }
 
@@ -1054,13 +1086,16 @@ module RecoTwExplorer {
             }
 
             $("#no-result-container").hide();
-            var options = Controller.getOptions();
+            const options = Controller.getOptions();
             if (username === void 0) {
                 this.renderChart(options);
             }
 
-            var table = Model.statistics.users.map((user, index) => ({ html: this.generateTableRow(user, options, index), screenName: user.target_sn.toLowerCase() }))
-                                              .filter(x => username === void 0 || x.screenName.startsWith(username));
+            const table = Model.statistics.users.map((user, index) => ({
+                html: this.generateTableRow(user, options, index),
+                screenName: user.target_sn.toLowerCase()
+            }))
+                .filter(x => username === void 0 || x.screenName.startsWith(username));
 
             $("#statistics-table").html(table.length > 0 ? table.map(x => x.html).join("") : Resources.NO_RESULT);
             super.render();
@@ -1087,7 +1122,7 @@ module RecoTwExplorer {
         }
 
         private generateTableRow(user: RecoTwUser, current: Options, index: number): string {
-            var options = new Options([user.target_sn], current.body, current.id, current.regex, current.order, current.orderBy);
+            const options = new Options([user.target_sn], current.body, current.id, current.regex, current.order, current.orderBy);
             return String.format(Resources.STATISTICS_TABLE_HTML, user.percentage > StatisticsTab.GRAPH_OPTIONS.sliceVisibilityThreshold ? StatisticsTab.GRAPH_COLORS[index + 1] : StatisticsTab.GRAPH_COLORS[0], user.target_sn, user.count, user.percentage, APP_URL + options.toQueryString());
         }
 
@@ -1097,7 +1132,7 @@ module RecoTwExplorer {
         }
 
         public applySearchFilter(username: string) {
-            var options = Controller.getOptions();
+            const options = Controller.getOptions();
             options.usernames = [username];
             Controller.setOptions(options, true, true, true);
 
@@ -1132,7 +1167,9 @@ module RecoTwExplorer {
         }
 
         public static postEntriesFromModal(): void {
-            var inputs: string[] = $("#new-record-modal input[type='text']").map(function () { return $(this).val(); }).get();
+            const inputs: string[] = $("#new-record-modal input[type='text']").map(function () {
+                return $(this).val();
+            }).get();
             try {
                 Model.registerEntries(inputs.filter(x => x.length > 0)).then(Controller.onRegistrationSucceeded, Controller.onRegistrationFailed);
                 $("#new-record-modal").modal("hide");
@@ -1204,10 +1241,6 @@ module RecoTwExplorer {
             View.title = Resources.PAGE_TITLE_NORMAL;
             $("#app-version").text(APP_VERSION);
 
-            if (window.innerHeight >= window.screen.height && navigator.standalone) {
-                $(document.body).addClass("standalone");
-            }
-
             Model.init();
             Tab.home = new HomeTab();
             Tab.statistics = new StatisticsTab();
@@ -1216,9 +1249,12 @@ module RecoTwExplorer {
             google.load("visualization", "1.0", { "packages": ["corechart"] });
             $("#loading-recotw").show();
 
-            var $window = $(window);
+            const $window = $(window);
             $window.unload(Model.save);
             $window.bottom({ proximity: 0.05 });
+            $window.on("orientationchange", () => {
+                $(document.body).toggleClass("standalone", window.innerHeight >= window.screen.height && navigator.standalone);
+            }).trigger("orientationchange");
             $window.on("bottom", () => {
                 if (Tab.home.active) {
                     Controller.onPageBottom();
@@ -1228,10 +1264,15 @@ module RecoTwExplorer {
                 Controller.setOptions(Options.fromQueryString(location.search, Controller.order, Controller.orderBy), false, false, true);
             });
             Tab.home.element.click(() => {
-                var length = Model.notification.length;
-                if (Tab.home.active && length > 0) {
+                if (!Tab.home.active) {
+                    return;
+                }
+                const count = Model.notification.length;
+                if (count) {
                     Model.notification.clear();
-                    Controller.showNewStatuses(length);
+                    Controller.showNewStatuses(count);
+                } else {
+                    $("html, body").animate({ scrollTop: 0 }, 400);
                 }
             });
             Model.notification.on("update", (eventObject, length) => {
@@ -1239,7 +1280,7 @@ module RecoTwExplorer {
                 if (length === 0) {
                     $("#unread-tweets").fadeOut();
                 } else {
-                    var badge = length < 100 ? length : "99+";
+                    const badge = length < 100 ? length : "99+";
                     $("#unread-tweets").text(badge).css({ display: "inline-block" });
                 }
             });
@@ -1260,9 +1301,9 @@ module RecoTwExplorer {
                 Controller.setOptions(Options.fromKeywords($("#search-box").val(), Controller.order, Controller.orderBy), false, true, false);
             });
             $("#search-form-toggle-button").click(function () {
-                var $this = $(this);
-                var $elm = $("#search-form");
-                var $main = $("#page-main");
+                const $this = $(this);
+                const $elm = $("#search-form");
+                const $main = $("#page-main");
                 if ($this.hasClass("active")) {
                     $this.removeClass("active");
                     $main.removeClass("main-search-active");
@@ -1277,7 +1318,7 @@ module RecoTwExplorer {
                 if (!navigator.standalone) {
                     $("#new-record-modal").modal("show");
                 } else {
-                    var result = window.prompt(Resources.REGISTER_NEW_TWEET);
+                    const result = window.prompt(Resources.REGISTER_NEW_TWEET);
                     if (result !== null) {
                         View.postEntriesFromDialog(result);
                     }
@@ -1372,7 +1413,7 @@ module RecoTwExplorer {
             $("#new-record-toggle-button").attr("data-content", String.format(Resources.REGISTRATION_FAILED_HTML, error)).popover("show");
         }
 
-        public static onPageBottom(): void {
+        private static onPageBottom(): void {
             if (Controller.loading) {
                 return;
             }
@@ -1381,12 +1422,12 @@ module RecoTwExplorer {
         }
 
         public static onChartSliceClick(slice: any): void {
-            var target = <string>slice.targetID;
-            var index = target.indexOf("#");
+            const target = <string>slice.targetID;
+            const index = target.indexOf("#");
             if (index < 0) {
                 return;
             }
-            var id = +target.substring(index + 1);
+            const id = +target.substring(index + 1);
             if (id < 0) {
                 return;
             }
@@ -1394,10 +1435,10 @@ module RecoTwExplorer {
         }
 
         private static onNewRecordFormTextBoxValueChanged($event: JQueryEventObject): void {
-            var $this = $(this).parents(".url-input-area").removeClass("has-success has-warning has-error");
-            var elm = <HTMLInputElement>$event.target;
+            const $this = $(this).parents(".url-input-area").removeClass("has-success has-warning has-error");
+            const elm = <HTMLInputElement>$event.target;
             try {
-                var id = Model.createIDfromURL(elm.value);
+                const id = Model.createIDfromURL(elm.value);
                 if (Model.entries.reset().enumerable.any(x => x.tweet_id === id)) {
                     $this.addClass("has-warning").find(".help-block").text(Resources.ALREADY_REGISTERED);
                 } else if (id !== null) {
@@ -1412,7 +1453,7 @@ module RecoTwExplorer {
             /**
              * [FUTURE] The following code is to increase text boxes for multiple entries registration.
              */
-            // var inputs: string[] = $(".url-box").map((index: number, element: HTMLInputElement) => element.value).get();
+            // const inputs: string[] = $(".url-box").map((index: number, element: HTMLInputElement) => element.value).get();
             // if (inputs[inputs.length - 1] !== "") {
             //     $("#new-record-form .modal-body").append(Resources.URL_INPUT_AREA);
             // } else if (inputs.length >= 2 && inputs[inputs.length - 2] === "") {
@@ -1423,10 +1464,12 @@ module RecoTwExplorer {
 
         public static showNewStatuses(count: number): void {
             Tab.home.show();
-            var options = Controller.getOptions();
+            const options = Controller.getOptions();
             if (options.isFiltered() || options.order !== Order.Descending || options.orderBy !== OrderBy.RecordedDate) {
                 Controller.setOptions(new Options([], "", null, false, options.order, options.orderBy), false, true, true);
             } else {
+                // Assign options in order to reset the enumerator
+                Model.options = options;
                 Tab.home.render(false, count);
             }
         }

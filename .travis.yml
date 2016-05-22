@@ -1,31 +1,24 @@
 language: node_js
 matrix:
   include:
+    - node_js: "6"
+    - node_js: "5"
     - node_js: "4"
       compiler: clang-3.6
       env:
         - CXX=clang-3.6
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-          packages:
-            - clang-3.6
-            - g++-4.8
-
       after_success:
         - cd dest
         - git add -A
         - git commit -m "update $TRAVIS_COMMIT"
-        - '([ "$TRAVIS_BRANCH" != "master" ] || [ !$GH_TOKEN ] || [ "$TRAVIS_PULL_REQUEST" == "true" ]) && exit'
-        - git push --quiet chitoku.jp master 2> /dev/null
+        - '([ "$TRAVIS_BRANCH" != "master" ] || [ ! $GH_TOKEN ] || [ "$TRAVIS_PULL_REQUEST" == "true" ]) && exit'
+        - git push --quiet chitoku.jp gh-pages 2> /dev/null
         - git push --quiet github gh-pages 2> /dev/null
-      install:
-        - npm install -g npm@3
-        - npm install
-        - npm install -g gulp-cli
-  fast_finish: true
+install:
+  - npm install -g npm@3
+  - npm install
+  - npm install -g gulp-cli
+fast_finish: true
 sudo: false
 cache:
   directories:
@@ -41,14 +34,15 @@ env:
     - secure: "iLUUc/LmjRCozVzudYdTk2nkhonLZ5BL2acguMjGV5ds2Wh6rcy+qvqOE456MpU+sggXtJHwPD5A8cJZyo++iWLUSvOB9GBdi3tfXCsW6/VofhMU8sOzpmGNbJdnTUn6XF0CY06Dw9xVLIaasHl/Zc3Y5g/csJbB+ab+pv1Naaw="
 before_install:
   - openssl aes-256-cbc -K $encrypted_61cd302c393d_key -iv $encrypted_61cd302c393d_iv -in id_rsa.enc -out id_rsa -d
-  - echo -e "Host chitoku.jp\n\tPort 5324\n\tIdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+  - echo -e "Host chitoku.jp\n\tPort 5324\n\tUser recotw\n\tIdentityFile ~/.ssh/id_rsa\n\tStrictHostKeyChecking no" >> ~/.ssh/config
   - cp id_rsa ~/.ssh/
   - chmod 600 ~/.ssh/id_rsa
 before_script:
+  - export TZ="Asia/Tokyo"
   - git clone --quiet -b gh-pages https://github.com/RecoTwExplorer/RecoTwExplorer dest
+  - pushd dest
   - git remote add github "https://$GH_TOKEN@github.com/RecoTwExplorer/RecoTwExplorer.git"
   - git remote add chitoku.jp "ssh://chitoku.jp/var/www/vhosts/recotw.chitoku.jp/httpdocs/"
-  - pushd dest
   - git checkout gh-pages
   - popd
 script: gulp full
