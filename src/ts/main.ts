@@ -502,8 +502,8 @@ module RecoTwExplorer {
          * @param events One or more space-separated event types.
          * @param handler A function to execute when the event is triggered.
          */
-        public on(events: string, handler: (eventObject: JQueryEventObject, length?: number) => any): JQuery {
-            return this._$wrapper.on.apply(this._$wrapper, arguments);
+        public on(events: string, handler: (eventObject: JQueryEventObject) => any): JQuery {
+            return this._$wrapper.on(events, handler);
         }
 
         /**
@@ -513,7 +513,7 @@ module RecoTwExplorer {
          * @param handler A handler function previously attached for the event(s).
          */
         public off(events?: string, selector?: string, handler?: (eventObject: JQueryEventObject) => any): JQuery {
-            return this._$wrapper.off.apply(this._$wrapper, arguments);
+            return this._$wrapper.off(events, selector);
         }
 
         /**
