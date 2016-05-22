@@ -480,9 +480,10 @@ module RecoTwExplorer {
          */
         public constructor() {
             this._favico = new Favico({ animation: "slide" });
-            this.on("update", (eventObject, length) => {
+            this.on("update", (eventObject) => {
                 try {
-                    this._favico.badge(length);
+                    const { detail: { count } } = <CustomEvent>eventObject.originalEvent;
+                    this._favico.badge(count);
                 } catch (e) {
                     console.log(e.message);
                 }
@@ -518,10 +519,20 @@ module RecoTwExplorer {
         /**
          * Executes all handlers attached for an event.
          * @param eventType A string containing a JavaScript event type, such as click or submit.
-         * @param extraParameters An array of additional parameters to pass along to the event handler.
          */
-        protected triggerHandler(eventType: string, extraParameters: any[]): Object {
-            return this._$wrapper.triggerHandler.apply(this._$wrapper, arguments);
+        protected trigger(eventType: string): Object {
+            const detail = {
+                count: this.length
+            };
+            let event: CustomEvent;
+            if (typeof CustomEvent === "function") {
+                event = new CustomEvent(eventType, { detail });
+            } else {
+                event = document.createEvent("CustomEvent");
+                event.initCustomEvent(eventType, false, false, { detail });
+            }
+            this._$wrapper.each((i, e) => e.dispatchEvent(event));
+            return detail;
         }
 
         /**
@@ -532,14 +543,16 @@ module RecoTwExplorer {
             if (count <= 0) {
                 return;
             }
-            this.triggerHandler("update", [ this._length = this.length + count ]);
+            this._length = this.length + count;
+            this.trigger("update");
         }
 
         /**
          * Clears all of the notifications.
          */
         public clear(): void {
-            this.triggerHandler("update", [ this._length = 0 ]);
+            this._length = 0;
+            this.trigger("update");
         }
     }
 
@@ -1275,12 +1288,13 @@ module RecoTwExplorer {
                     $("html, body").animate({ scrollTop: 0 }, 400);
                 }
             });
-            Model.notification.on("update", (eventObject, length) => {
+            Model.notification.on("update", (eventObject) => {
                 View.title = null;
-                if (length === 0) {
+                const { detail: { count } } = <CustomEvent>eventObject.originalEvent;
+                if (count === 0) {
                     $("#unread-tweets").fadeOut();
                 } else {
-                    const badge = length < 100 ? length : "99+";
+                    const badge = count < 100 ? count : "99+";
                     $("#unread-tweets").text(badge).css({ display: "inline-block" });
                 }
             });
