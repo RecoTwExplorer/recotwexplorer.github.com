@@ -35,8 +35,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "typings install",
-    "update": "typings update"
+    "install": "typings install"
   },
   "repository": {
     "type": "git",
