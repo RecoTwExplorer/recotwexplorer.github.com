@@ -1,4 +1,4 @@
-/// <reference path="typings/main.d.ts"/>
+/// <reference path="typings/index.d.ts"/>
 
 import {Gulpclass, Task, SequenceTask} from "gulpclass/Decorators";
 import * as gulp from "gulp";
