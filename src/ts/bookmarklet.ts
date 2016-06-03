@@ -1,5 +1,3 @@
-/// <reference path="./recotw.d.ts"/>
-
 /*!
  * RecoTw Explorer - Copyright 2014, Chitoku
  * http://recotw.chitoku.jp/

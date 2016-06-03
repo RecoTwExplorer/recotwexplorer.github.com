@@ -1,8 +1,3 @@
-/// <reference path="./main.d.ts"/>
-/// <reference path="./recotw.d.ts"/>
-/// <reference path="./dom.d.ts"/>
-/// <reference path="../../lib/js/typings/libstring/libstring.d.ts"/>
-
 /*!
  * RecoTw Explorer - Copyright 2014, Chitoku
  * http://recotw.chitoku.jp/
