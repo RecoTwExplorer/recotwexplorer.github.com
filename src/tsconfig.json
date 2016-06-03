@@ -18,7 +18,6 @@
         "ts/main.ts",
         "ts/recotw.d.ts",
         "../lib/js/libstring.d.ts",
-        "../lib/js/typings/libstring/libstring.d.ts",
         "../typings/index.d.ts",
         "../node_modules/typescript/lib/lib.es6.d.ts"
     ]
